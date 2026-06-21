@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const SCALES = {
   major:          { label: "Major",            pcs: [0,2,4,5,7,9,11] },
@@ -30,6 +30,19 @@ export default function App() {
   const [scaleId, setScaleId] = useState("major");
   const [selected, setSelected] = useState({}); // { stringIndex: fret }
   const [hint, setHint] = useState("");
+
+  // report content height to the parent page so the iframe can auto-resize (fixes mobile cut-off)
+  useEffect(() => {
+    const post = () => {
+      const h = Math.ceil(document.documentElement.getBoundingClientRect().height);
+      window.parent.postMessage({ type: "holdsworth-explorer-height", height: h }, "*");
+    };
+    post();
+    const ro = new ResizeObserver(post);
+    ro.observe(document.body);
+    window.addEventListener("resize", post);
+    return () => { ro.disconnect(); window.removeEventListener("resize", post); };
+  });
 
   const scaleSet = new Set(SCALES[scaleId].pcs.map((s) => (keyPC + s) % 12));
 
@@ -120,6 +133,11 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: "Inter, system-ui, sans-serif", color: INK, maxWidth: 920, margin: "0 auto", padding: "18px 16px 40px" }}>
+      <style>{`
+        @media (max-width: 560px){
+          .hde-board-hint{ display:block !important; }
+        }
+      `}</style>
       <h1 style={{ fontSize: 24, margin: "0 0 4px", fontWeight: 800 }}>Holdsworth Chord Explorer</h1>
       <p style={{ margin: "0 0 18px", color: MUTED, fontSize: 15, lineHeight: 1.5 }}>
         Pick a key and a scale, tap <strong>four notes</strong> (one per string) to build a voicing, then move
@@ -148,7 +166,7 @@ export default function App() {
 
       {/* fretboard */}
       <div style={{ overflowX: "auto", border: "1px solid #edeff3", borderRadius: 12, padding: "4px 2px", background: "#fff" }}>
-        <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: "100%", minWidth: 620, display: "block" }}>
+        <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: "100%", minWidth: 540, display: "block" }}>
           {/* fret wires */}
           {Array.from({ length: FRETS + 1 }, (_, f) => (
             <line key={f} x1={X0 + f * FW} y1={cy(5)} x2={X0 + f * FW} y2={cy(0)} stroke={LINE} strokeWidth={f === 0 ? 3 : 1.4} />
@@ -171,6 +189,9 @@ export default function App() {
           ))}
           {dots}
         </svg>
+      </div>
+      <div className="hde-board-hint" style={{ display: "none", fontSize: 12, color: MUTED, margin: "6px 2px 0" }}>
+        Tip: swipe the fretboard sideways to see all 15 frets.
       </div>
 
       {/* status */}
